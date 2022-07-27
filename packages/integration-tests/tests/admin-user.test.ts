@@ -1,7 +1,22 @@
 import { HTTPError } from 'got';
 
-import { getUser, getUsers, updateUser, deleteUser, updateUserPassword } from '@/api';
-import { createUser } from '@/helpers';
+import {
+  mockSocialConnectorConfig,
+  mockSocialConnectorId,
+  mockSocialConnectorTarget,
+} from '@/__mocks__/connectors-mock';
+import {
+  getUser,
+  getUsers,
+  updateUser,
+  deleteUser,
+  updateUserPassword,
+  updateConnectorConfig,
+  enableConnector,
+  disableConnector,
+  deleteUserIdentity,
+} from '@/api';
+import { createUser, signInWithSocialAndBindToNewAccount } from '@/helpers';
 
 describe('admin console user management', () => {
   it('should create user successfully', async () => {
@@ -51,5 +66,26 @@ describe('admin console user management', () => {
     const user = await createUser();
     const userEntity = await updateUserPassword(user.id, 'new_password');
     expect(userEntity).toMatchObject(user);
+  });
+
+  it('should delete user identity successfully', async () => {
+    // Setup mock social connector
+    await updateConnectorConfig(mockSocialConnectorId, mockSocialConnectorConfig);
+    await enableConnector(mockSocialConnectorId);
+
+    const userId = await signInWithSocialAndBindToNewAccount();
+
+    const user = await getUser(userId);
+
+    expect(user.identities).toHaveProperty(mockSocialConnectorTarget);
+
+    await deleteUserIdentity(userId, mockSocialConnectorTarget);
+
+    const updatedUser = await getUser(userId);
+
+    expect(updatedUser.identities).not.toHaveProperty(mockSocialConnectorTarget);
+
+    // Reset mock social connector
+    await disableConnector(mockSocialConnectorId);
   });
 });

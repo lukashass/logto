@@ -12,7 +12,7 @@ import {
 } from '@logto/connector-types';
 
 import { defaultMetadata } from './constant';
-import { mockSocialConfigGuard, MockSocialConfig } from './types';
+import { mockSocialConfigGuard, MockSocialConfig, mockSocialDataGuard } from './types';
 
 export default class MockSocialConnector implements SocialConnectorInstance<MockSocialConfig> {
   public metadata: ConnectorMetadata = defaultMetadata;
@@ -41,12 +41,26 @@ export default class MockSocialConnector implements SocialConnectorInstance<Mock
   }
 
   public getAuthorizationUri: GetAuthorizationUri = async ({ state, redirectUri }) => {
-    return `http://mock.social.com?state=${state}&redirect_uri=${redirectUri}`;
+    return `http://mock.social.com/login?state=${state}&redirect_uri=${redirectUri}`;
   };
 
   public getAccessToken = async () => randomUUID();
 
-  public getUserInfo: GetUserInfo = async () => ({
-    id: `mock-social-sub-${randomUUID()}`,
-  });
+  public getUserInfo: GetUserInfo = async (data) => {
+    const { sub } = await this.authorizationCallbackHandler(data);
+
+    return {
+      id: sub,
+    };
+  };
+
+  private readonly authorizationCallbackHandler = async (parameterObject: unknown) => {
+    const result = mockSocialDataGuard.safeParse(parameterObject);
+
+    if (!result.success) {
+      throw new ConnectorError(ConnectorErrorCodes.General, JSON.stringify(parameterObject));
+    }
+
+    return result.data;
+  };
 }

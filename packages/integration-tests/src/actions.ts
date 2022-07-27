@@ -1,6 +1,9 @@
+import { randomUUID } from 'crypto';
+
 import { assert } from '@silverhand/essentials';
 import got from 'got';
 
+import { mockSocialConnectorId } from './__mocks__/connectors-mock';
 import { api } from './api';
 import { logtoUrl } from './constants';
 import { extractCookie } from './utils';
@@ -14,6 +17,10 @@ type SignInResponse = {
 };
 
 type ConsentResponse = {
+  redirectTo: string;
+};
+
+type SocialSignInResponse = {
   redirectTo: string;
 };
 
@@ -136,4 +143,84 @@ export const consentUserAndGetSignInCallbackUri = async (interactionCookie: stri
   assert(signInCallbackUri, new Error('Get sign in callback uri failed'));
 
   return signInCallbackUri;
+};
+
+export const signInWithSocial = async (interactionCookie: string) => {
+  const state = randomUUID();
+  const redirectUri = 'http://integration.test.com';
+
+  const { redirectTo } = await api
+    .post('session/sign-in/social', {
+      json: {
+        connectorId: mockSocialConnectorId,
+        state,
+        redirectUri,
+      },
+      headers: {
+        cookie: interactionCookie,
+      },
+    })
+    .json<SocialSignInResponse>();
+
+  assert(redirectTo, new Error('Invoke social sign in failed'));
+};
+
+export const authBySocial = async (socialPlatformUUID: string, interactionCookie: string) => {
+  const response = await api.post('session/sign-in/social/auth', {
+    json: {
+      connectorId: mockSocialConnectorId,
+      data: {
+        sub: socialPlatformUUID,
+      },
+    },
+    headers: {
+      cookie: interactionCookie,
+    },
+    throwHttpErrors: false,
+  });
+
+  // Todo: Handle the situations:
+  // Note: This may have two results.
+  // 1. The user with the socialPlatformUUID has not registered yet.
+  // 2. The user with the socialPlatformUUID has already registered.
+
+  console.log(response);
+};
+
+export const registerAccountBySocial = async (interactionCookie: string) => {
+  const { redirectTo: completeSignInActionUri } = await api
+    .post('session/register/social', {
+      json: {
+        connectorId: mockSocialConnectorId,
+      },
+      headers: {
+        cookie: interactionCookie,
+      },
+    })
+    .json<SignInResponse>();
+
+  // Note: visit the completeSignInActionUri to get a new interaction cookie with session.
+  const completeSignInActionResponse = await got.get(completeSignInActionUri, {
+    headers: {
+      cookie: interactionCookie,
+    },
+    followRedirect: false,
+  });
+
+  // Note: If sign in action completed successfully, it will redirect the user to the consent page.
+  assert(
+    completeSignInActionResponse.statusCode === 303 &&
+      completeSignInActionResponse.headers.location === '/sign-in/consent',
+    new Error('Invoke auth before consent failed')
+  );
+
+  const cookieWithSession = extractCookie(completeSignInActionResponse);
+
+  // Note: If sign in action completed successfully, we will get `_session.sig` in the cookie.
+  assert(
+    Boolean(cookieWithSession) && cookieWithSession.includes('_session.sig'),
+    new Error('Invoke auth before consent failed')
+  );
+
+  return cookieWithSession;
 };
