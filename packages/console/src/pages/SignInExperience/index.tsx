@@ -21,6 +21,7 @@ import SignInMethodsChangePreview from './components/SignInMethodsChangePreview'
 import Skeleton from './components/Skeleton';
 import Welcome from './components/Welcome';
 import usePreviewConfigs from './hooks';
+import useCustomPhrasesContext from './hooks/use-custom-phrases-context';
 import * as styles from './index.module.scss';
 import BrandingTab from './tabs/BrandingTab';
 import OthersTab from './tabs/OthersTab';
@@ -47,6 +48,8 @@ const SignInExperience = () => {
   const formData = watch();
 
   const previewConfigs = usePreviewConfigs(formData, isDirty, data);
+  const { context: customPhrasesContext, Provider: CustomPhraseProvider } =
+    useCustomPhrasesContext();
 
   const defaultFormData = useMemo(() => {
     if (!data) {
@@ -100,78 +103,84 @@ const SignInExperience = () => {
 
   if (!settings?.signInExperienceCustomized) {
     return (
-      <Welcome
-        mutate={() => {
-          void mutateSettings();
-          void mutate();
-        }}
-      />
+      <CustomPhraseProvider value={customPhrasesContext}>
+        <Welcome
+          mutate={() => {
+            void mutateSettings();
+            void mutate();
+          }}
+        />
+      </CustomPhraseProvider>
     );
   }
 
   return (
-    <div className={styles.wrapper}>
-      <div className={classNames(styles.setup, detailsStyles.container)}>
-        <Card className={styles.card}>
-          <CardTitle title="sign_in_exp.title" subtitle="sign_in_exp.description" />
-          <TabNav className={styles.tabs}>
-            <TabNavItem href="/sign-in-experience/branding">
-              {t('sign_in_exp.tabs.branding')}
-            </TabNavItem>
-            <TabNavItem href="/sign-in-experience/methods">
-              {t('sign_in_exp.tabs.methods')}
-            </TabNavItem>
-            <TabNavItem href="/sign-in-experience/others">
-              {t('sign_in_exp.tabs.others')}
-            </TabNavItem>
-          </TabNav>
-          {!data && error && <div>{`error occurred: ${error.body?.message ?? error.message}`}</div>}
-          {data && defaultFormData && (
-            <FormProvider {...methods}>
-              <form className={styles.formWrapper} onSubmit={onSubmit}>
-                <div className={classNames(detailsStyles.body, styles.form)}>
-                  {tab === 'branding' && (
-                    <BrandingTab defaultData={defaultFormData} isDataDirty={isDirty} />
-                  )}
-                  {tab === 'methods' && (
-                    <SignInMethodsTab defaultData={defaultFormData} isDataDirty={isDirty} />
-                  )}
-                  {tab === 'others' && (
-                    <OthersTab defaultData={defaultFormData} isDataDirty={isDirty} />
-                  )}
-                </div>
-                <div className={detailsStyles.footer}>
-                  <div className={detailsStyles.footerMain}>
-                    <Button
-                      isLoading={isSubmitting}
-                      type="primary"
-                      size="large"
-                      htmlType="submit"
-                      title="general.save_changes"
-                    />
+    <CustomPhraseProvider value={customPhrasesContext}>
+      <div className={styles.wrapper}>
+        <div className={classNames(styles.setup, detailsStyles.container)}>
+          <Card className={styles.card}>
+            <CardTitle title="sign_in_exp.title" subtitle="sign_in_exp.description" />
+            <TabNav className={styles.tabs}>
+              <TabNavItem href="/sign-in-experience/branding">
+                {t('sign_in_exp.tabs.branding')}
+              </TabNavItem>
+              <TabNavItem href="/sign-in-experience/methods">
+                {t('sign_in_exp.tabs.methods')}
+              </TabNavItem>
+              <TabNavItem href="/sign-in-experience/others">
+                {t('sign_in_exp.tabs.others')}
+              </TabNavItem>
+            </TabNav>
+            {!data && error && (
+              <div>{`error occurred: ${error.body?.message ?? error.message}`}</div>
+            )}
+            {data && defaultFormData && (
+              <FormProvider {...methods}>
+                <form className={styles.formWrapper} onSubmit={onSubmit}>
+                  <div className={classNames(detailsStyles.body, styles.form)}>
+                    {tab === 'branding' && (
+                      <BrandingTab defaultData={defaultFormData} isDataDirty={isDirty} />
+                    )}
+                    {tab === 'methods' && (
+                      <SignInMethodsTab defaultData={defaultFormData} isDataDirty={isDirty} />
+                    )}
+                    {tab === 'others' && (
+                      <OthersTab defaultData={defaultFormData} isDataDirty={isDirty} />
+                    )}
                   </div>
-                </div>
-              </form>
-            </FormProvider>
-          )}
-        </Card>
+                  <div className={detailsStyles.footer}>
+                    <div className={detailsStyles.footerMain}>
+                      <Button
+                        isLoading={isSubmitting}
+                        type="primary"
+                        size="large"
+                        htmlType="submit"
+                        title="general.save_changes"
+                      />
+                    </div>
+                  </div>
+                </form>
+              </FormProvider>
+            )}
+          </Card>
+        </div>
+        {formData.id && <Preview signInExperience={previewConfigs} />}
+        {data && (
+          <ConfirmModal
+            isOpen={Boolean(dataToCompare)}
+            onCancel={() => {
+              setDataToCompare(undefined);
+            }}
+            onConfirm={async () => {
+              await saveData();
+              setDataToCompare(undefined);
+            }}
+          >
+            {dataToCompare && <SignInMethodsChangePreview before={data} after={dataToCompare} />}
+          </ConfirmModal>
+        )}
       </div>
-      {formData.id && <Preview signInExperience={previewConfigs} />}
-      {data && (
-        <ConfirmModal
-          isOpen={Boolean(dataToCompare)}
-          onCancel={() => {
-            setDataToCompare(undefined);
-          }}
-          onConfirm={async () => {
-            await saveData();
-            setDataToCompare(undefined);
-          }}
-        >
-          {dataToCompare && <SignInMethodsChangePreview before={data} after={dataToCompare} />}
-        </ConfirmModal>
-      )}
-    </div>
+    </CustomPhraseProvider>
   );
 };
 

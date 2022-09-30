@@ -14,6 +14,8 @@ const noop = () => {
 export type ConfirmationState = 'none' | 'try-close' | 'try-switch-language' | 'try-add-language';
 
 export type Context = {
+  existedLanguageTags: LanguageTag[];
+  defaultLanguageTag: LanguageTag;
   displayingLanguages: LanguageTag[];
   selectedLanguageTag: LanguageTag;
   preSelectedLanguageTag: LanguageTag | undefined;
@@ -21,6 +23,7 @@ export type Context = {
   isAddingLanguage: boolean;
   isCurrentCustomPhraseDirty: boolean;
   confirmationState: ConfirmationState;
+  setDefaultLanguageTag: React.Dispatch<React.SetStateAction<LanguageTag>>;
   setSelectedLanguageTag: React.Dispatch<React.SetStateAction<LanguageTag>>;
   resetSelectedLanguageTag: () => void;
   setPreSelectedLanguageTag: React.Dispatch<React.SetStateAction<LanguageTag | undefined>>;
@@ -33,6 +36,8 @@ export type Context = {
 };
 
 export const CustomPhrasesContext = createContext<Context>({
+  defaultLanguageTag: 'en',
+  existedLanguageTags: [],
   displayingLanguages: [],
   selectedLanguageTag: 'en',
   preSelectedLanguageTag: undefined,
@@ -40,6 +45,7 @@ export const CustomPhrasesContext = createContext<Context>({
   isAddingLanguage: false,
   isCurrentCustomPhraseDirty: false,
   confirmationState: 'none',
+  setDefaultLanguageTag: noop,
   setSelectedLanguageTag: noop,
   resetSelectedLanguageTag: noop,
   setPreSelectedLanguageTag: noop,
@@ -70,6 +76,8 @@ const useCustomPhrasesContext = () => {
     [customPhraseList]
   );
 
+  const [defaultLanguageTag, setDefaultLanguageTag] = useState<LanguageTag>('en');
+
   const [displayingLanguages, setDisplayingLanguages] =
     useState<LanguageTag[]>(existedLanguageTags);
 
@@ -77,8 +85,13 @@ const useCustomPhrasesContext = () => {
     setDisplayingLanguages(existedLanguageTags);
   }, [existedLanguageTags]);
 
-  const defaultLanguageTag = useMemo(() => existedLanguageTags[0] ?? 'en', [existedLanguageTags]);
-  const [selectedLanguageTag, setSelectedLanguageTag] = useState<LanguageTag>(defaultLanguageTag);
+  const defaultSelectedLanguageInEditor = useMemo(
+    () => existedLanguageTags[0] ?? 'en',
+    [existedLanguageTags]
+  );
+  const [selectedLanguageTag, setSelectedLanguageTag] = useState<LanguageTag>(
+    defaultSelectedLanguageInEditor
+  );
   const [preSelectedLanguageTag, setPreSelectedLanguageTag] = useState<LanguageTag>();
   const [preAddedLanguageTag, setPreAddedLanguageTag] = useState<LanguageTag>();
   const [isAddingLanguage, setIsAddingLanguage] = useState(false);
@@ -120,11 +133,13 @@ const useCustomPhrasesContext = () => {
   );
 
   const resetSelectedLanguageTag = useCallback(() => {
-    setSelectedLanguageTag(defaultLanguageTag);
-  }, [defaultLanguageTag]);
+    setSelectedLanguageTag(defaultSelectedLanguageInEditor);
+  }, [defaultSelectedLanguageInEditor]);
 
   const context = useMemo<Context>(() => {
     return {
+      existedLanguageTags,
+      defaultLanguageTag,
       displayingLanguages,
       selectedLanguageTag,
       preSelectedLanguageTag,
@@ -132,6 +147,7 @@ const useCustomPhrasesContext = () => {
       isAddingLanguage,
       isCurrentCustomPhraseDirty,
       confirmationState,
+      setDefaultLanguageTag,
       setSelectedLanguageTag,
       resetSelectedLanguageTag,
       setPreSelectedLanguageTag,
@@ -143,6 +159,8 @@ const useCustomPhrasesContext = () => {
       stopAddingLanguage,
     };
   }, [
+    existedLanguageTags,
+    defaultLanguageTag,
     displayingLanguages,
     selectedLanguageTag,
     preSelectedLanguageTag,
