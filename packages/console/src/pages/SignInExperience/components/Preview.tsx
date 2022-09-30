@@ -1,5 +1,4 @@
-import { LanguageTag } from '@logto/language-kit';
-import { builtInLanguageOptions } from '@logto/phrases-ui';
+import { languages, LanguageTag } from '@logto/language-kit';
 import {
   AppearanceMode,
   ConnectorResponse,
@@ -9,7 +8,7 @@ import {
 import { conditional } from '@silverhand/essentials';
 import classNames from 'classnames';
 import dayjs from 'dayjs';
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
@@ -19,6 +18,7 @@ import TabNav, { TabNavItem } from '@/components/TabNav';
 import { RequestError } from '@/hooks/use-api';
 import PhoneInfo from '@/icons/PhoneInfo';
 
+import { CustomPhrasesContext } from '../hooks/use-custom-phrases-context';
 import * as styles from './Preview.module.scss';
 
 type Props = {
@@ -33,6 +33,8 @@ const Preview = ({ signInExperience, className }: Props) => {
   const [platform, setPlatform] = useState<'desktopWeb' | 'mobile' | 'mobileWeb'>('desktopWeb');
   const { data: allConnectors } = useSWR<ConnectorResponse[], RequestError>('/api/connectors');
   const previewRef = useRef<HTMLIFrameElement>(null);
+
+  const { existedLanguageTags } = useContext(CustomPhrasesContext);
 
   const modeOptions = useMemo(() => {
     const light = { value: AppearanceMode.LightMode, title: t('sign_in_exp.preview.light') };
@@ -56,14 +58,18 @@ const Preview = ({ signInExperience, className }: Props) => {
   }, [modeOptions, mode]);
 
   const availableLanguageOptions = useMemo(() => {
-    if (signInExperience && !signInExperience.languageInfo.autoDetect) {
-      return builtInLanguageOptions.filter(
-        ({ value }) => value === signInExperience.languageInfo.fallbackLanguage
-      );
-    }
+    const availableLanguageTags =
+      signInExperience && !signInExperience.languageInfo.autoDetect
+        ? existedLanguageTags.filter(
+            (languageTag) => languageTag === signInExperience.languageInfo.fallbackLanguage
+          )
+        : existedLanguageTags;
 
-    return builtInLanguageOptions;
-  }, [signInExperience]);
+    return availableLanguageTags.map((languageTag) => ({
+      value: languageTag,
+      title: languages[languageTag],
+    }));
+  }, [existedLanguageTags, signInExperience]);
 
   useEffect(() => {
     if (!availableLanguageOptions[0]) {
