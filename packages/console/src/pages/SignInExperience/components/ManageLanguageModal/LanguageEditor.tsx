@@ -3,13 +3,15 @@ import resource, { isBuiltInLanguageTag } from '@logto/phrases-ui';
 import en from '@logto/phrases-ui/lib/locales/en';
 import { Translation } from '@logto/schemas';
 import cleanDeep from 'clean-deep';
-import { useCallback, useContext, useEffect, useMemo } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
 import Button from '@/components/Button';
+import ConfirmModal from '@/components/ConfirmModal';
+import IconButton from '@/components/IconButton';
 import useApi, { RequestError } from '@/hooks/use-api';
 import Delete from '@/icons/Delete';
 
@@ -25,13 +27,20 @@ const LanguageEditor = () => {
   const { t } = useTranslation(undefined, { keyPrefix: 'admin_console' });
 
   const {
+    defaultLanguageTag,
     selectedLanguageTag,
     appendToCustomPhraseList,
+    removeFromCustomPhraseList,
     setIsCurrentCustomPhraseDirty,
     stopAddingLanguage,
+    resetSelectedLanguageTag,
   } = useContext(CustomPhrasesContext);
 
+  const [isDeletionAlertOpen, setIsDeletionAlertOpen] = useState(false);
+
   const isBuiltIn = isBuiltInLanguageTag(selectedLanguageTag);
+
+  const isDefaultLanguage = defaultLanguageTag === selectedLanguageTag;
 
   const translationEntries = useMemo(
     () => Object.entries((isBuiltIn ? resource[selectedLanguageTag] : en).translation),
@@ -108,6 +117,27 @@ const LanguageEditor = () => {
     [api, appendToCustomPhraseList, stopAddingLanguage]
   );
 
+  const onDelete = useCallback(() => {
+    if (!customPhrase && !isDefaultLanguage) {
+      stopAddingLanguage(true);
+      resetSelectedLanguageTag();
+
+      return;
+    }
+    setIsDeletionAlertOpen(true);
+  }, [customPhrase, isDefaultLanguage, resetSelectedLanguageTag, stopAddingLanguage]);
+
+  const onConfirmDeletion = useCallback(async () => {
+    setIsDeletionAlertOpen(false);
+
+    if (isDefaultLanguage) {
+      return;
+    }
+
+    await api.delete(`/api/custom-phrases/${selectedLanguageTag}`);
+    removeFromCustomPhraseList(selectedLanguageTag);
+  }, [api, isDefaultLanguage, removeFromCustomPhraseList, selectedLanguageTag]);
+
   const onSubmit = handleSubmit(async (formData: Translation) => {
     const updatedCustomPhrase = await upsertCustomPhrase(selectedLanguageTag, formData);
     void mutate(updatedCustomPhrase);
@@ -129,12 +159,19 @@ const LanguageEditor = () => {
   return (
     <div className={style.languageEditor}>
       <div className={style.title}>
-        {languages[selectedLanguageTag]}
-        <span>{selectedLanguageTag}</span>
-        {isBuiltIn && (
-          <span className={style.builtInFlag}>
-            {t('sign_in_exp.others.manage_language.logto_provided')}
-          </span>
+        <div className={style.languageInfo}>
+          {languages[selectedLanguageTag]}
+          <span>{selectedLanguageTag}</span>
+          {isBuiltIn && (
+            <span className={style.builtInFlag}>
+              {t('sign_in_exp.others.manage_language.logto_provided')}
+            </span>
+          )}
+        </div>
+        {!isBuiltIn && (
+          <IconButton onClick={onDelete}>
+            <Delete />
+          </IconButton>
         )}
       </div>
       <form
@@ -190,6 +227,28 @@ const LanguageEditor = () => {
           />
         </div>
       </form>
+      <ConfirmModal
+        isOpen={isDeletionAlertOpen}
+        title={
+          isDefaultLanguage
+            ? 'sign_in_exp.others.manage_language.default_language_deletion_title'
+            : 'sign_in_exp.others.manage_language.deletion_title'
+        }
+        confirmButtonText={
+          isDefaultLanguage ? 'sign_in_exp.others.manage_language.got_it' : 'general.delete'
+        }
+        confirmButtonType={isDefaultLanguage ? 'primary' : 'danger'}
+        onCancel={() => {
+          setIsDeletionAlertOpen(false);
+        }}
+        onConfirm={onConfirmDeletion}
+      >
+        {isDefaultLanguage
+          ? t('sign_in_exp.others.manage_language.default_language_deletion_description', {
+              language: languages[selectedLanguageTag],
+            })
+          : t('sign_in_exp.others.manage_language.deletion_description')}
+      </ConfirmModal>
     </div>
   );
 };

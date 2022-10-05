@@ -30,6 +30,7 @@ export type Context = {
   setPreAddedLanguageTag: React.Dispatch<React.SetStateAction<LanguageTag | undefined>>;
   setIsCurrentCustomPhraseDirty: React.Dispatch<React.SetStateAction<boolean>>;
   appendToCustomPhraseList: (customPhrase: CustomPhraseResponse) => void;
+  removeFromCustomPhraseList: (removedLanguageTag: LanguageTag) => void;
   setConfirmationState: React.Dispatch<React.SetStateAction<ConfirmationState>>;
   startAddingLanguage: (languageTag: LanguageTag) => void;
   stopAddingLanguage: (isCanceled?: boolean) => void;
@@ -52,6 +53,7 @@ export const CustomPhrasesContext = createContext<Context>({
   setPreAddedLanguageTag: noop,
   setIsCurrentCustomPhraseDirty: noop,
   appendToCustomPhraseList: noop,
+  removeFromCustomPhraseList: noop,
   setConfirmationState: noop,
   startAddingLanguage: noop,
   stopAddingLanguage: noop,
@@ -92,6 +94,11 @@ const useCustomPhrasesContext = () => {
   const [selectedLanguageTag, setSelectedLanguageTag] = useState<LanguageTag>(
     defaultSelectedLanguageInEditor
   );
+
+  useEffect(() => {
+    setSelectedLanguageTag(defaultSelectedLanguageInEditor);
+  }, [defaultSelectedLanguageInEditor]);
+
   const [preSelectedLanguageTag, setPreSelectedLanguageTag] = useState<LanguageTag>();
   const [preAddedLanguageTag, setPreAddedLanguageTag] = useState<LanguageTag>();
   const [isAddingLanguage, setIsAddingLanguage] = useState(false);
@@ -108,6 +115,21 @@ const useCustomPhrasesContext = () => {
       ]);
     },
     [customPhraseList, mutateCustomPhraseList]
+  );
+
+  const removeFromCustomPhraseList = useCallback(
+    (removedLanguageTag: LanguageTag) => {
+      void mutateCustomPhraseList(
+        customPhraseList?.filter(({ languageTag }) => languageTag !== removedLanguageTag) ?? []
+      );
+
+      setSelectedLanguageTag(
+        existedLanguageTags.find((languageTag) => {
+          return languageTag !== removedLanguageTag;
+        }) ?? 'en'
+      );
+    },
+    [customPhraseList, existedLanguageTags, mutateCustomPhraseList]
   );
 
   const startAddingLanguage = useCallback(
@@ -154,6 +176,7 @@ const useCustomPhrasesContext = () => {
       setPreAddedLanguageTag,
       setIsCurrentCustomPhraseDirty,
       appendToCustomPhraseList,
+      removeFromCustomPhraseList,
       setConfirmationState,
       startAddingLanguage,
       stopAddingLanguage,
@@ -170,6 +193,7 @@ const useCustomPhrasesContext = () => {
     confirmationState,
     resetSelectedLanguageTag,
     appendToCustomPhraseList,
+    removeFromCustomPhraseList,
     startAddingLanguage,
     stopAddingLanguage,
   ]);
