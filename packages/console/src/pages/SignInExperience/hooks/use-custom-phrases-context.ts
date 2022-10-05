@@ -30,7 +30,7 @@ export type Context = {
   setPreAddedLanguageTag: React.Dispatch<React.SetStateAction<LanguageTag | undefined>>;
   setIsCurrentCustomPhraseDirty: React.Dispatch<React.SetStateAction<boolean>>;
   appendToCustomPhraseList: (customPhrase: CustomPhraseResponse) => void;
-  removeFromCustomPhraseList: (removedLanguageTag: LanguageTag) => void;
+  removeCustomPhrase: (removedLanguageTag: LanguageTag) => void;
   setConfirmationState: React.Dispatch<React.SetStateAction<ConfirmationState>>;
   startAddingLanguage: (languageTag: LanguageTag) => void;
   stopAddingLanguage: (isCanceled?: boolean) => void;
@@ -53,7 +53,7 @@ export const CustomPhrasesContext = createContext<Context>({
   setPreAddedLanguageTag: noop,
   setIsCurrentCustomPhraseDirty: noop,
   appendToCustomPhraseList: noop,
-  removeFromCustomPhraseList: noop,
+  removeCustomPhrase: noop,
   setConfirmationState: noop,
   startAddingLanguage: noop,
   stopAddingLanguage: noop,
@@ -117,7 +117,7 @@ const useCustomPhrasesContext = () => {
     [customPhraseList, mutateCustomPhraseList]
   );
 
-  const removeFromCustomPhraseList = useCallback(
+  const removeCustomPhrase = useCallback(
     (removedLanguageTag: LanguageTag) => {
       void mutateCustomPhraseList(
         customPhraseList?.filter(({ languageTag }) => languageTag !== removedLanguageTag) ?? []
@@ -176,7 +176,7 @@ const useCustomPhrasesContext = () => {
       setPreAddedLanguageTag,
       setIsCurrentCustomPhraseDirty,
       appendToCustomPhraseList,
-      removeFromCustomPhraseList,
+      removeCustomPhrase,
       setConfirmationState,
       startAddingLanguage,
       stopAddingLanguage,
@@ -193,7 +193,7 @@ const useCustomPhrasesContext = () => {
     confirmationState,
     resetSelectedLanguageTag,
     appendToCustomPhraseList,
-    removeFromCustomPhraseList,
+    removeCustomPhrase,
     startAddingLanguage,
     stopAddingLanguage,
   ]);

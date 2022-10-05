@@ -30,7 +30,7 @@ const LanguageEditor = () => {
     defaultLanguageTag,
     selectedLanguageTag,
     appendToCustomPhraseList,
-    removeFromCustomPhraseList,
+    removeCustomPhrase,
     setIsCurrentCustomPhraseDirty,
     stopAddingLanguage,
     resetSelectedLanguageTag,
@@ -135,8 +135,8 @@ const LanguageEditor = () => {
     }
 
     await api.delete(`/api/custom-phrases/${selectedLanguageTag}`);
-    removeFromCustomPhraseList(selectedLanguageTag);
-  }, [api, isDefaultLanguage, removeFromCustomPhraseList, selectedLanguageTag]);
+    removeCustomPhrase(selectedLanguageTag);
+  }, [api, isDefaultLanguage, removeCustomPhrase, selectedLanguageTag]);
 
   const onSubmit = handleSubmit(async (formData: Translation) => {
     const updatedCustomPhrase = await upsertCustomPhrase(selectedLanguageTag, formData);
